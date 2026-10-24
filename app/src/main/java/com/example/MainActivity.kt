@@ -107,7 +107,12 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
     val unlockedQaIds by viewModel.unlockedQaIds.collectAsStateWithLifecycle()
 
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val allCachedSchools by viewModel.allCachedSchools.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val isSearchingGoogle by viewModel.isSearchingGoogle.collectAsStateWithLifecycle()
+    val googleSuggestions by viewModel.googleSuggestions.collectAsStateWithLifecycle()
+    val recentGoogleSearches by viewModel.recentGoogleSearches.collectAsStateWithLifecycle()
+    val activeGoogleWebQuery by viewModel.activeGoogleWebQuery.collectAsStateWithLifecycle()
     val selectedDivision by viewModel.selectedDivision.collectAsStateWithLifecycle()
     val selectedType by viewModel.selectedType.collectAsStateWithLifecycle()
 
@@ -403,6 +408,8 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     unlockedNoteIds = unlockedNoteIds,
                     schools = searchResults,
                     notes = filteredNotes,
+                    recentGoogleSearches = recentGoogleSearches,
+                    onSearchGoogleFromHome = { query -> viewModel.searchSchoolOnGoogleNow(query) },
                     onNavigateToSearch = { viewModel.navigateTo(AppScreen.SEARCH) },
                     onNavigateToNotes = { viewModel.navigateTo(AppScreen.NOTES) },
                     onNavigateToQa = { viewModel.navigateTo(AppScreen.QA) },
@@ -412,12 +419,20 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     },
                     onSelectSchool = { school -> viewModel.onSelectSchool(school) },
                     onSelectNote = { note -> viewModel.onSelectNote(note) },
-                    onCopyEiin = { eiin, name -> viewModel.copyEiinToClipboard(eiin, name) }
+                    onCopyEiin = { eiin, name, school -> viewModel.copyEiinToClipboard(eiin, name, school) }
                 )
 
                 AppScreen.SEARCH -> SchoolSearchScreen(
                     searchQuery = searchQuery,
                     onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                    onSearchGoogleNow = { query -> viewModel.searchSchoolOnGoogleNow(query) },
+                    isSearchingGoogle = isSearchingGoogle,
+                    googleSuggestions = googleSuggestions,
+                    recentGoogleSearches = recentGoogleSearches,
+                    activeGoogleWebQuery = activeGoogleWebQuery,
+                    onGoogleWebViewResultsExtracted = { q, json ->
+                        viewModel.onGoogleWebViewResultsExtracted(q, json)
+                    },
                     selectedDivision = selectedDivision,
                     onSelectDivision = { viewModel.onSelectDivision(it) },
                     selectedType = selectedType,
@@ -426,7 +441,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     unlockedSchoolIds = unlockedSchoolIds,
                     remainingCredits = entitlements.schoolCreditsRemaining,
                     onSelectSchool = { school -> viewModel.onSelectSchool(school) },
-                    onCopyEiin = { eiin, name -> viewModel.copyEiinToClipboard(eiin, name) },
+                    onCopyEiin = { eiin, name, school -> viewModel.copyEiinToClipboard(eiin, name, school) },
                     onNavigateToBilling = {
                         viewModel.setBillingTab("SCHOOLS")
                         viewModel.navigateTo(AppScreen.BILLING)
@@ -486,7 +501,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     unlockedSchoolIds = unlockedSchoolIds,
                     unlockedNoteIds = unlockedNoteIds,
                     unlockedQaIds = unlockedQaIds,
-                    allSchools = searchResults,
+                    allSchools = allCachedSchools,
                     allNotes = filteredNotes,
                     allQuestions = filteredQuestions,
                     transactions = transactions,
@@ -498,7 +513,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                 )
 
                 AppScreen.ADMIN -> AdminDashboardScreen(
-                    schools = searchResults,
+                    schools = allCachedSchools,
                     notes = filteredNotes,
                     transactions = transactions,
                     onBack = { viewModel.navigateBack() },
@@ -513,14 +528,15 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
 
     // Modal Sheet 1: School Detail Dossier & EIIN Reveal
     selectedSchool?.let { school ->
-        val isUnlocked = unlockedSchoolIds.contains(school.id)
+        val isUnlocked = unlockedSchoolIds.contains(school.id) ||
+            unlockedSchoolIds.contains("eiin_${school.eiin}")
         SchoolDetailSheet(
             school = school,
             isUnlocked = isUnlocked,
             remainingCredits = entitlements.schoolCreditsRemaining,
             onDismiss = { viewModel.onSelectSchool(null) },
             onUnlock = { viewModel.onUnlockSchool(school) },
-            onCopyEiin = { eiin -> viewModel.copyEiinToClipboard(eiin, school.name) },
+            onCopyEiin = { eiin -> viewModel.copyEiinToClipboard(eiin, school.name, school) },
             onOpenBilling = {
                 viewModel.onSelectSchool(null)
                 viewModel.setBillingTab("SCHOOLS")

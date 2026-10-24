@@ -135,17 +135,19 @@ fun SchoolDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // EIIN Box - Prominent
+            val canViewEiin = isUnlocked || remainingCredits > 0
+
+            // EIIN Box - Prominent & Unlocked automatically while user has remaining credits
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isUnlocked) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
+                    containerColor = if (canViewEiin) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
                         width = 1.5.dp,
-                        color = if (isUnlocked) EmeraldTeal else AcademicNavy,
+                        color = if (canViewEiin) EmeraldTeal else Color.Red,
                         shape = RoundedCornerShape(16.dp)
                     )
             ) {
@@ -163,28 +165,28 @@ fun SchoolDetailSheet(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
-                            color = if (isUnlocked) EmeraldTeal else AcademicNavy
+                            color = if (canViewEiin) EmeraldTeal else Color.Red
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isUnlocked) Icons.Default.CheckCircle else Icons.Default.Lock,
+                                imageVector = if (canViewEiin) Icons.Default.CheckCircle else Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (isUnlocked) EmeraldTeal else AcademicNavy,
+                                tint = if (canViewEiin) EmeraldTeal else Color.Red,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isUnlocked) "UNLOCKED" else "LOCKED",
+                                text = if (canViewEiin) "UNLOCKED" else "LIMIT REACHED",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isUnlocked) EmeraldTeal else AcademicNavy
+                                color = if (canViewEiin) EmeraldTeal else Color.Red
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    if (isUnlocked) {
+                    if (canViewEiin) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -214,13 +216,13 @@ fun SchoolDetailSheet(
                             }
                         }
                         Text(
-                            text = "Verified official EIIN code",
+                            text = "Unlocked under your active credit entitlement ($remainingCredits credits left)",
                             fontSize = 12.sp,
                             color = Color(0xFF2E7D32),
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     } else {
-                        // Locked view with masked EIIN
+                        // Limit reached view (0 credits remaining)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -235,7 +237,7 @@ fun SchoolDetailSheet(
                             )
                         }
                         Text(
-                            text = "1 School Credit required to reveal and copy",
+                            text = "Credit limit reached (0 credits remaining). Buy a credit package to view more EIINs.",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)
@@ -243,36 +245,15 @@ fun SchoolDetailSheet(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        if (remainingCredits > 0) {
-                            Button(
-                                onClick = onUnlock,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("unlock_school_button")
-                            ) {
-                                Icon(imageVector = Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Unlock EIIN Record (1 Credit)", fontWeight = FontWeight.Bold)
-                            }
-                            Text(
-                                text = "$remainingCredits search credits available (Won't charge again once unlocked)",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
-                        } else {
-                            OutlinedButton(
-                                onClick = onOpenBilling,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = AcademicNavy),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("buy_credits_for_school_button")
-                            ) {
-                                Text("No Credits Remaining — Purchase Package", fontWeight = FontWeight.Bold)
-                            }
+                        OutlinedButton(
+                            onClick = onOpenBilling,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AcademicNavy),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("buy_credits_for_school_button")
+                        ) {
+                            Text("Credit Limit Reached — Purchase Package", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

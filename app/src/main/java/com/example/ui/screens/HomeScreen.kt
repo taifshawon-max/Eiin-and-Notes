@@ -56,6 +56,20 @@ import com.example.ui.theme.AcademicNavyDark
 import com.example.ui.theme.EmeraldTeal
 import com.example.ui.theme.GoldenAmber
 
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+
 @Composable
 fun HomeScreen(
     entitlements: UserEntitlementEntity,
@@ -63,14 +77,19 @@ fun HomeScreen(
     unlockedNoteIds: Set<String>,
     schools: List<SchoolEntity>,
     notes: List<ClassNoteEntity>,
+    recentGoogleSearches: List<String>,
+    onSearchGoogleFromHome: (String) -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToQa: () -> Unit,
     onNavigateToBilling: (String) -> Unit,
     onSelectSchool: (SchoolEntity) -> Unit,
     onSelectNote: (ClassNoteEntity) -> Unit,
-    onCopyEiin: (String, String) -> Unit
+    onCopyEiin: (String, String, SchoolEntity?) -> Unit
 ) {
+    var homeSearchInput by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -78,7 +97,7 @@ fun HomeScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // App Identity Hero Banner
+        // App Identity Hero Banner with Live Google EIIN Search Bar
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -121,7 +140,7 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = "BANGLADESH EDUCATION PORTAL",
+                                        text = "LIVE GOOGLE EIIN & EDUCATION HUB",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 1.2.sp,
@@ -150,47 +169,126 @@ fun HomeScreen(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Google Play", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Google Live", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Find official School EIIN numbers, unlock academic Class Notes, and ask expert educators via Question & Answer Packs.",
+                            text = "Search any Bangladeshi school on Google directly from the search bar to find its verified 6-digit EIIN, unlock Class Notes, or get Q&A Packs.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(alpha = 0.9f),
                             lineHeight = 19.sp
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        // Quick Search Launcher bar
+                        // Interactive Live Google EIIN Search Bar on Home Screen
                         Card(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onNavigateToSearch() }
                                 .testTag("home_quick_search_bar")
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = homeSearchInput,
+                                    onValueChange = { homeSearchInput = it },
+                                    placeholder = {
+                                        Text(
+                                            text = "Search any school EIIN on Google...",
+                                            fontSize = 12.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search Google",
+                                            tint = AcademicNavy
+                                        )
+                                    },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = {
+                                            focusManager.clearFocus()
+                                            if (homeSearchInput.isNotBlank()) {
+                                                onSearchGoogleFromHome(homeSearchInput)
+                                            } else {
+                                                onNavigateToSearch()
+                                            }
+                                        }
+                                    ),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AcademicNavy,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedContainerColor = Color(0xFFF5F8FF),
+                                        unfocusedContainerColor = Color(0xFFF5F8FF)
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("home_google_search_input")
+                                )
+
+                                Button(
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        if (homeSearchInput.isNotBlank()) {
+                                            onSearchGoogleFromHome(homeSearchInput)
+                                        } else {
+                                            onNavigateToSearch()
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                    modifier = Modifier.testTag("home_google_search_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Public,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Search", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        if (recentGoogleSearches.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = AcademicNavy
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Search school name or 6-digit EIIN...",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                items(recentGoogleSearches.take(4)) { recentQuery ->
+                                    SuggestionChip(
+                                        onClick = { onSearchGoogleFromHome(recentQuery) },
+                                        label = {
+                                            Text(
+                                                text = recentQuery,
+                                                fontSize = 10.sp,
+                                                color = Color.White
+                                            )
+                                        },
+                                        colors = SuggestionChipDefaults.suggestionChipColors(
+                                            containerColor = Color.White.copy(alpha = 0.16f)
+                                        ),
+                                        border = SuggestionChipDefaults.suggestionChipBorder(
+                                            enabled = true,
+                                            borderColor = Color.White.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -529,7 +627,9 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(schools.take(6)) { school ->
-                        val isUnlocked = unlockedSchoolIds.contains(school.id)
+                        val isUnlocked = unlockedSchoolIds.contains(school.id) ||
+                            unlockedSchoolIds.contains("eiin_${school.eiin}")
+                        val canViewEiin = isUnlocked || entitlements.schoolCreditsRemaining > 0
                         Card(
                             shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -553,17 +653,17 @@ fun HomeScreen(
                                     )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = if (isUnlocked) Icons.Default.CheckCircle else Icons.Default.Lock,
+                                            imageVector = if (canViewEiin) Icons.Default.CheckCircle else Icons.Default.Lock,
                                             contentDescription = null,
-                                            tint = if (isUnlocked) EmeraldTeal else Color.Gray,
+                                            tint = if (canViewEiin) EmeraldTeal else Color.Gray,
                                             modifier = Modifier.size(14.dp)
                                         )
                                         Spacer(modifier = Modifier.width(3.dp))
                                         Text(
-                                            text = if (isUnlocked) school.eiin else "Locked",
+                                            text = if (canViewEiin) school.eiin else "Limit Reached",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isUnlocked) AcademicNavy else Color.Gray
+                                            color = if (canViewEiin) AcademicNavy else Color.Gray
                                         )
                                     }
                                 }
@@ -596,9 +696,9 @@ fun HomeScreen(
                                         fontSize = 10.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    if (isUnlocked) {
+                                    if (canViewEiin) {
                                         IconButton(
-                                            onClick = { onCopyEiin(school.eiin, school.name) },
+                                            onClick = { onCopyEiin(school.eiin, school.name, school) },
                                             modifier = Modifier.size(28.dp)
                                         ) {
                                             Icon(

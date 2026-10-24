@@ -25,6 +25,8 @@ import com.example.data.repository.NotesRepository
 import com.example.data.repository.PurchaseResult
 import com.example.data.repository.QaRepository
 import com.example.data.repository.SchoolRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -89,9 +91,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val transactions: StateFlow<List<PurchaseTransactionEntity>> = billingRepository.allTransactions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // School Search State
+    // Live Google School Search State
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _isSearchingGoogle = MutableStateFlow(false)
+    val isSearchingGoogle: StateFlow<Boolean> = _isSearchingGoogle.asStateFlow()
+
+    private val _googleSearchResults = MutableStateFlow<List<SchoolEntity>>(emptyList())
+    val googleSearchResults: StateFlow<List<SchoolEntity>> = _googleSearchResults.asStateFlow()
+
+    private val _googleSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val googleSuggestions: StateFlow<List<String>> = _googleSuggestions.asStateFlow()
+
+    private val _activeGoogleWebQuery = MutableStateFlow("")
+    val activeGoogleWebQuery: StateFlow<String> = _activeGoogleWebQuery.asStateFlow()
+
+    private val _recentGoogleSearches = MutableStateFlow(
+        listOf(
+            "Viqarunnisa Noon School EIIN",
+            "Rajuk Uttara Model College EIIN",
+            "Notre Dame College Dhaka EIIN",
+            "Chittagong Collegiate School EIIN",
+            "Rajshahi Collegiate School EIIN"
+        )
+    )
+    val recentGoogleSearches: StateFlow<List<String>> = _recentGoogleSearches.asStateFlow()
 
     private val _selectedDivision = MutableStateFlow("All")
     val selectedDivision: StateFlow<String> = _selectedDivision.asStateFlow()
@@ -99,14 +124,34 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedType = MutableStateFlow("All")
     val selectedType: StateFlow<String> = _selectedType.asStateFlow()
 
+    private var googleSearchJob: Job? = null
+
+    val allCachedSchools: StateFlow<List<SchoolEntity>> = schoolRepository.allSchools
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Prioritizes live Google Search results whenever the user types in the search bar,
+     * rather than relying on static local data.
+     */
     val searchResults: StateFlow<List<SchoolEntity>> = combine(
-        _searchQuery.flatMapLatest { schoolRepository.searchSchools(it) },
+        _searchQuery,
+        _googleSearchResults,
+        _searchQuery.flatMapLatest { schoolRepository.searchSchoolsLocalCache(it) },
         _selectedDivision,
         _selectedType
-    ) { list, div, type ->
-        list.filter { school ->
-            (div == "All" || school.division.equals(div, ignoreCase = true)) &&
-            (type == "All" || school.institutionType.equals(type, ignoreCase = true))
+    ) { query, liveGoogleList, cachedList, div, type ->
+        val baseList = if (query.isNotBlank()) {
+            // Merge live Google results first, followed by any matching cached records
+            (liveGoogleList + cachedList).distinctBy {
+                if (it.eiin.length == 6 && it.eiin.all { c -> c.isDigit() }) it.eiin else it.name.lowercase()
+            }
+        } else {
+            if (liveGoogleList.isNotEmpty()) liveGoogleList else cachedList
+        }
+
+        baseList.filter { school ->
+            (div == "All" || school.division.equals(div, ignoreCase = true) || school.division == "Bangladesh") &&
+            (type == "All" || school.institutionType.contains(type, ignoreCase = true))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -184,6 +229,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
+            entitlementRepository.ensureEntitlementsSeeded()
             schoolRepository.ensureDataSeeded()
             notesRepository.ensureDataSeeded()
             qaRepository.ensureDataSeeded()
@@ -204,8 +250,99 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return false
     }
 
+    /**
+     * Updates the search query and automatically triggers live Google Search & Google Suggest
+     * after a short typing debounce.
+     */
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+        googleSearchJob?.cancel()
+
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) {
+            _isSearchingGoogle.value = false
+            _googleSuggestions.value = emptyList()
+            _googleSearchResults.value = emptyList()
+            return
+        }
+
+        googleSearchJob = viewModelScope.launch {
+            // Fetch live Google autocomplete suggestions right away
+            if (trimmed.length >= 2) {
+                val suggestions = schoolRepository.fetchGoogleSuggestions(trimmed)
+                _googleSuggestions.value = suggestions
+            }
+
+            // Debounce full Google Search execution while user types
+            if (trimmed.length >= 3) {
+                delay(400)
+                executeGoogleSearchInternal(trimmed, autoConsumeTopResult = false)
+            }
+        }
+    }
+
+    /**
+     * Immediately executes a live Google Search for the given school name or EIIN from any search bar
+     * (Home screen or School Search screen) and navigates to the Search screen.
+     */
+    fun searchSchoolOnGoogleNow(query: String) {
+        val trimmed = query.trim()
+        _searchQuery.value = trimmed
+        if (currentScreen.value != AppScreen.SEARCH) {
+            navigateTo(AppScreen.SEARCH)
+        }
+        if (trimmed.isBlank()) return
+
+        // Save in recent searches
+        val updatedRecent = listOf(trimmed) + _recentGoogleSearches.value.filterNot { it.equals(trimmed, ignoreCase = true) }
+        _recentGoogleSearches.value = updatedRecent.take(8)
+
+        googleSearchJob?.cancel()
+        googleSearchJob = viewModelScope.launch {
+            executeGoogleSearchInternal(trimmed, autoConsumeTopResult = true)
+        }
+    }
+
+    private suspend fun executeGoogleSearchInternal(trimmedQuery: String, autoConsumeTopResult: Boolean) {
+        _isSearchingGoogle.value = true
+        _activeGoogleWebQuery.value = trimmedQuery
+        try {
+            val liveResults = schoolRepository.searchGoogleLive(trimmedQuery)
+            if (liveResults.isNotEmpty()) {
+                _googleSearchResults.value = liveResults
+                if (autoConsumeTopResult && entitlements.value.schoolCreditsRemaining > 0) {
+                    schoolRepository.unlockSchool(liveResults.first())
+                }
+            } else if (autoConsumeTopResult && entitlements.value.schoolCreditsRemaining > 0) {
+                // If local cache matched a school for this explicit search, auto-unlock the top match
+                val topCached = searchResults.value.firstOrNull()
+                if (topCached != null) {
+                    schoolRepository.unlockSchool(topCached)
+                }
+            }
+        } finally {
+            _isSearchingGoogle.value = false
+        }
+    }
+
+    /**
+     * Receives live Google Search DOM results extracted from the Android WebView and merges them
+     * directly into the search bar results list.
+     */
+    fun onGoogleWebViewResultsExtracted(query: String, jsonArrayStr: String) {
+        if (query.isBlank() || jsonArrayStr.isBlank()) return
+        viewModelScope.launch {
+            val extracted = schoolRepository.parseAndCacheWebViewResults(query, jsonArrayStr)
+            if (extracted.isNotEmpty()) {
+                val merged = (extracted + _googleSearchResults.value).distinctBy {
+                    if (it.eiin.length == 6 && it.eiin.all { c -> c.isDigit() }) it.eiin else it.name.lowercase()
+                }
+                _googleSearchResults.value = merged
+                if (entitlements.value.schoolCreditsRemaining > 0) {
+                    schoolRepository.unlockSchool(extracted.first())
+                }
+            }
+        }
     }
 
     fun onSelectDivision(division: String) {
@@ -218,26 +355,51 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSelectSchool(school: SchoolEntity?) {
         _selectedSchool.value = school
+        if (school != null) {
+            viewModelScope.launch {
+                val isAlreadyUnlocked = unlockedSchoolIds.value.contains(school.id) ||
+                    unlockedSchoolIds.value.contains("eiin_${school.eiin}")
+                if (!isAlreadyUnlocked && entitlements.value.schoolCreditsRemaining > 0) {
+                    schoolRepository.unlockSchool(school)
+                }
+            }
+        }
     }
 
     fun onUnlockSchool(school: SchoolEntity) {
         viewModelScope.launch {
-            val result = schoolRepository.unlockSchool(school.id)
+            val result = schoolRepository.unlockSchool(school)
             result.onSuccess {
-                _toastMessage.value = "EIIN Record for '${school.name}' unlocked successfully!"
+                _toastMessage.value = "EIIN Record for '${school.name}' unlocked!"
             }.onFailure { err ->
-                _toastMessage.value = err.message ?: "Failed to unlock record"
+                _toastMessage.value = err.message ?: "Credit limit reached. Please purchase a credit package."
                 _billingTab.value = "SCHOOLS"
                 navigateTo(AppScreen.BILLING)
             }
         }
     }
 
-    fun copyEiinToClipboard(eiin: String, schoolName: String) {
-        val clipboard = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("School EIIN", eiin)
-        clipboard.setPrimaryClip(clip)
-        _toastMessage.value = "EIIN: $eiin copied to clipboard!"
+    fun copyEiinToClipboard(eiin: String, schoolName: String, school: SchoolEntity? = null) {
+        viewModelScope.launch {
+            if (school != null) {
+                val isAlreadyUnlocked = unlockedSchoolIds.value.contains(school.id) ||
+                    unlockedSchoolIds.value.contains("eiin_${school.eiin}")
+                if (!isAlreadyUnlocked) {
+                    if (entitlements.value.schoolCreditsRemaining > 0) {
+                        schoolRepository.unlockSchool(school)
+                    } else {
+                        _toastMessage.value = "Credit limit reached (0 credits left). Please purchase a credit package."
+                        _billingTab.value = "SCHOOLS"
+                        navigateTo(AppScreen.BILLING)
+                        return@launch
+                    }
+                }
+            }
+            val clipboard = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("School EIIN", eiin)
+            clipboard.setPrimaryClip(clip)
+            _toastMessage.value = "EIIN: $eiin copied to clipboard!"
+        }
     }
 
     fun onNotesSearchChanged(query: String) {

@@ -3,7 +3,9 @@ package com.example
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.model.PricingCatalog
+import com.example.data.remote.GoogleSchoolSearchService
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -74,5 +76,24 @@ class ExampleRobolectricTest {
         assertEquals(20, packages[19].questionCount)
         assertEquals(20.01, packages[19].priceUsd, 0.001)
         assertEquals("qa_credits_20", packages[19].sku)
+    }
+
+    @Test
+    fun `verify google search dom eiin extraction`() {
+        val service = GoogleSchoolSearchService()
+        val sampleGoogleDomJson = """
+            [
+                {
+                    "title": "Cantonment English School & College - Sohopathi",
+                    "snippet": "Cantonment English School & College is an academic institute located at Bayezid Bostami Chattogram. Its EIIN is 104271.",
+                    "link": "https://www.google.com/search?q=Cantonment+English+School+EIIN"
+                }
+            ]
+        """.trimIndent()
+
+        val extracted = service.parseWebViewDomResults("Cantonment English School", sampleGoogleDomJson)
+        assertTrue(extracted.isNotEmpty())
+        assertEquals("104271", extracted.first().eiin)
+        assertEquals("Chattogram", extracted.first().division)
     }
 }

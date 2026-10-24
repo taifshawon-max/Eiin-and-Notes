@@ -19,6 +19,12 @@ class EntitlementRepository(
     val unlockedNotes: Flow<List<UnlockedNoteEntity>> = entitlementDao.observeUnlockedNotes()
     val unlockedQa: Flow<List<UnlockedQaEntity>> = entitlementDao.observeUnlockedQa()
 
+    suspend fun ensureEntitlementsSeeded() {
+        if (entitlementDao.getUserEntitlements() == null) {
+            entitlementDao.saveUserEntitlements(InitialDataSeeder.getDefaultEntitlements())
+        }
+    }
+
     suspend fun getEntitlements(): UserEntitlementEntity {
         return entitlementDao.getUserEntitlements() ?: run {
             val defaultEnt = InitialDataSeeder.getDefaultEntitlements()
