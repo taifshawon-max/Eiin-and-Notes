@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Graduation Cap Rhombus -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 L84,40 L54,54 L24,40 Z" />
+
+    <!-- Cap Underside / Headpiece -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M37,46.5 L37,55 C37,62 71,62 71,55 L71,46.5 C66,49 60,50.5 54,50.5 C48,50.5 42,49 37,46.5 Z" />
+
+    <!-- Golden Tassel Cord and Fringe -->
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="2.5"
+        android:pathData="M54,40 C68,40 82,46 84,54" />
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M81,54 L87,54 L85.5,65 L82.5,65 Z" />
+
+    <!-- Open Book Pages Left -->
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M52,65 C40,62.5 30,65.5 25,68.5 L25,83.5 C30,80.5 40,77.5 52,80 Z" />
+
+    <!-- Open Book Pages Right -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,65 C68,62.5 78,65.5 83,68.5 L83,83.5 C78,80.5 68,77.5 56,80 Z" />
+
+    <!-- Book Spine & EIIN Badge Star -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M52.5,64.5 H55.5 V81 H52.5 Z" />
+
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M54,58 L55.5,61.5 L59,62 L56.5,64.5 L57,68 L54,66 L51,68 L51.5,64.5 L49,62 L52.5,61.5 Z" />
+</vector>

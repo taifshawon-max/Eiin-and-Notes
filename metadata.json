@@ -1,0 +1,6 @@
+{
+  "name": "EIIN Finder & Notes",
+  "description": "Bangladeshi School EIIN search and academic class notes marketplace with credit entitlements",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
