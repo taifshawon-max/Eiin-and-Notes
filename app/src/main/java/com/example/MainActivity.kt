@@ -1,6 +1,8 @@
 package com.example
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -21,15 +23,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Search
@@ -77,18 +79,82 @@ import com.example.ui.theme.AcademicNavy
 import com.example.ui.theme.EmeraldTeal
 import com.example.ui.theme.GoldenAmber
 import com.example.ui.theme.MyApplicationTheme
+import android.util.Log
 import com.example.ui.viewmodel.AppScreen
 import com.example.ui.viewmodel.AppViewModel
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.recaptcha.RecaptchaAppCheckProviderFactory
+
+private const val TAG = "AppCheckInit"
+private const val DEBUG_TOKEN_EXTRA = "FIREBASE_APPCHECK_DEBUG_TOKEN"
+private const val DEBUG_STORE_PREFIX = "com.google.firebase.appcheck.debug.store."
+private const val DEBUG_SECRET_KEY = "com.google.firebase.appcheck.debug.DEBUG_SECRET"
+private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
+
+fun configureAppCheck(context: Context, intent: Intent?) {
+    try {
+        if (FirebaseApp.getApps(context).isEmpty()) {
+            FirebaseApp.initializeApp(context)
+        }
+
+        if (BuildConfig.DEBUG) {
+            val debugToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)
+            if (!debugToken.isNullOrEmpty()) {
+                val persistenceKey = FirebaseApp.getInstance().persistenceKey
+                val prefs = context.getSharedPreferences(
+                    "$DEBUG_STORE_PREFIX$persistenceKey",
+                    Context.MODE_PRIVATE
+                )
+                prefs.edit()
+                    .putString(DEBUG_SECRET_KEY, debugToken)
+                    .commit()
+                Log.d(TAG, "App Check debug secret configured successfully.")
+            } else {
+                Log.w(TAG, "No debug token found in Intent extra.")
+            }
+
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                DebugAppCheckProviderFactory.getInstance()
+            )
+            Log.d(TAG, "DebugAppCheckProviderFactory installed.")
+        } else {
+            val resId = context.resources.getIdentifier(RECAPTCHA_SITE_KEY_RES, "string", context.packageName)
+            if (resId != 0) {
+                val siteKey = context.getString(resId)
+                if (siteKey.isNotBlank()) {
+                    FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                        RecaptchaAppCheckProviderFactory.getInstance(siteKey)
+                    )
+                    Log.d(TAG, "RecaptchaAppCheckProviderFactory installed.")
+                } else {
+                    Log.e(TAG, "recaptcha_site_key resource string is blank.")
+                }
+            } else {
+                Log.e(TAG, "recaptcha_site_key string resource not found in package.")
+            }
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to initialize Firebase App Check", e)
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureAppCheck(this, intent)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
                 MainAppRoot()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        configureAppCheck(this, intent)
     }
 }
 
@@ -113,6 +179,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
     val googleSuggestions by viewModel.googleSuggestions.collectAsStateWithLifecycle()
     val recentGoogleSearches by viewModel.recentGoogleSearches.collectAsStateWithLifecycle()
     val activeGoogleWebQuery by viewModel.activeGoogleWebQuery.collectAsStateWithLifecycle()
+    val aiSearchSummary by viewModel.aiSearchSummary.collectAsStateWithLifecycle()
     val selectedDivision by viewModel.selectedDivision.collectAsStateWithLifecycle()
     val selectedType by viewModel.selectedType.collectAsStateWithLifecycle()
 
@@ -131,6 +198,8 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
     val selectedNotePackage by viewModel.selectedNotePackage.collectAsStateWithLifecycle()
     val selectedQaPackage by viewModel.selectedQaPackage.collectAsStateWithLifecycle()
     val isPlayBillingModalOpen by viewModel.isPlayBillingModalOpen.collectAsStateWithLifecycle()
+    val isPlayStoreConnected by viewModel.isPlayStoreConnected.collectAsStateWithLifecycle()
+    val billingDiagnosticMessage by viewModel.billingDiagnosticMessage.collectAsStateWithLifecycle()
 
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val selectedSchool by viewModel.selectedSchool.collectAsStateWithLifecycle()
@@ -238,7 +307,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MenuBook,
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(11.dp)
@@ -347,7 +416,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                         onClick = { viewModel.navigateTo(AppScreen.NOTES) },
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == AppScreen.NOTES) Icons.Filled.MenuBook else Icons.Outlined.MenuBook,
+                                imageVector = if (currentScreen == AppScreen.NOTES) Icons.AutoMirrored.Filled.MenuBook else Icons.AutoMirrored.Outlined.MenuBook,
                                 contentDescription = "Class Notes"
                             )
                         },
@@ -430,6 +499,7 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     googleSuggestions = googleSuggestions,
                     recentGoogleSearches = recentGoogleSearches,
                     activeGoogleWebQuery = activeGoogleWebQuery,
+                    aiSearchSummary = aiSearchSummary,
                     onGoogleWebViewResultsExtracted = { q, json ->
                         viewModel.onGoogleWebViewResultsExtracted(q, json)
                     },
@@ -509,7 +579,8 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
                     onSelectNote = { note -> viewModel.onSelectNote(note) },
                     onSelectQa = { qa -> viewModel.onSelectQa(qa) },
                     onRestorePurchases = { viewModel.restorePurchases() },
-                    onNavigateToAdmin = { viewModel.navigateTo(AppScreen.ADMIN) }
+                    onNavigateToAdmin = { viewModel.navigateTo(AppScreen.ADMIN) },
+                    onRequestAccountDeletion = { viewModel.requestAccountDeletion() }
                 )
 
                 AppScreen.ADMIN -> AdminDashboardScreen(
@@ -546,14 +617,18 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
         )
     }
 
-    // Modal Sheet 2: Google Play Billing Simulator Sheet (Google Play Only)
+    // Modal Sheet 2: Google Play Billing Official Status & Launch Sheet (Google Play Only)
     if (isPlayBillingModalOpen) {
         PlayBillingSimulatorSheet(
             schoolPackage = selectedSchoolPackage,
             notePackage = selectedNotePackage,
             qaPackage = selectedQaPackage,
+            isPlayStoreConnected = isPlayStoreConnected,
+            diagnosticMessage = billingDiagnosticMessage,
             onDismiss = { viewModel.dismissBillingModal() },
-            onCompletePurchase = { outcome -> viewModel.completePurchaseWithOutcome(outcome) },
+            onRetryGooglePlayLaunch = { viewModel.retryGooglePlayBilling(activity) },
+            onOpenPlayStore = { viewModel.openGooglePlayStoreListing() },
+            onRestorePurchases = { viewModel.restorePurchases() },
             sheetState = billingSheetState
         )
     }
@@ -567,6 +642,14 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
             remainingNoteCredits = entitlements.noteCreditsRemaining,
             onClose = { viewModel.closeNoteReader() },
             onUnlock = { viewModel.onUnlockNote(note) },
+            onDownloadPdf = { viewModel.exportNoteToPdf(note) },
+            onShareNote = {
+                viewModel.shareDocumentContent(
+                    context = context,
+                    subject = "${note.title} (${note.subject})",
+                    textBody = "${note.title}\nSubject: ${note.subject} (${note.academicLevel})\nAuthor: ${note.author}\n\n${note.fullContent}"
+                )
+            },
             onOpenBilling = {
                 viewModel.closeNoteReader()
                 viewModel.setBillingTab("NOTES")
@@ -584,6 +667,14 @@ fun MainAppRoot(viewModel: AppViewModel = viewModel()) {
             remainingQaCredits = entitlements.qaCreditsRemaining,
             onClose = { viewModel.onSelectQa(null) },
             onUnlock = { viewModel.onUnlockQa(qa) },
+            onDownloadPdf = { viewModel.exportQaToPdf(qa) },
+            onShareQa = {
+                viewModel.shareDocumentContent(
+                    context = context,
+                    subject = "Q&A Solution: ${qa.questionTitle}",
+                    textBody = "Question: ${qa.questionTitle}\nCategory: ${qa.category} (${qa.academicLevel})\n\nVerified Answer:\n${qa.fullAnswer}"
+                )
+            },
             onOpenBilling = {
                 viewModel.onSelectQa(null)
                 viewModel.setBillingTab("QA")

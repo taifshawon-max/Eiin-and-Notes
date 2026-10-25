@@ -7,6 +7,7 @@ import com.example.data.model.SchoolEntity
 import com.example.data.model.UnlockedSchoolEntity
 import com.example.data.remote.GoogleSchoolSearchService
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
 
 class SchoolRepository(
@@ -16,6 +17,7 @@ class SchoolRepository(
 ) {
     val allSchools: Flow<List<SchoolEntity>> = schoolDao.getAllSchools()
     val allDivisions: Flow<List<String>> = schoolDao.getAllDivisions()
+    val lastAiSearchSummary: StateFlow<String?> = googleSearchService.lastAiSearchSummary
 
     fun searchSchoolsLocalCache(query: String): Flow<List<SchoolEntity>> {
         return if (query.isBlank()) {
@@ -26,7 +28,7 @@ class SchoolRepository(
     }
 
     /**
-     * Searches Google live for any Bangladeshi school EIIN and caches discovered records
+     * Searches AI & Google live for any Bangladeshi school EIIN and caches discovered records
      * so unlocked schools persist in the user's library.
      */
     suspend fun searchGoogleLive(query: String): List<SchoolEntity> {
@@ -47,10 +49,10 @@ class SchoolRepository(
     }
 
     /**
-     * Parses live Google Search DOM results extracted from the Android WebView and caches them.
+     * Parses live Google Search DOM results extracted from the Android WebView using AI + regex and caches them.
      */
     suspend fun parseAndCacheWebViewResults(query: String, jsonArrayStr: String): List<SchoolEntity> {
-        val parsed = googleSearchService.parseWebViewDomResults(query, jsonArrayStr)
+        val parsed = googleSearchService.parseWebViewDomResultsWithAi(query, jsonArrayStr)
         if (parsed.isNotEmpty()) {
             schoolDao.insertSchools(parsed)
         }

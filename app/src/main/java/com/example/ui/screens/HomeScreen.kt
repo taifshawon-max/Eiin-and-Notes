@@ -20,12 +20,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
@@ -204,14 +203,14 @@ fun HomeScreen(
                                     onValueChange = { homeSearchInput = it },
                                     placeholder = {
                                         Text(
-                                            text = "Search any school EIIN on Google...",
+                                            text = "AI Search any school EIIN...",
                                             fontSize = 12.sp
                                         )
                                     },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.Search,
-                                            contentDescription = "Search Google",
+                                            contentDescription = "AI Search EIIN",
                                             tint = AcademicNavy
                                         )
                                     },
@@ -259,7 +258,7 @@ fun HomeScreen(
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Search", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("AI Search", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -499,7 +498,7 @@ fun HomeScreen(
                                 lineHeight = 16.sp
                             )
                         }
-                        Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = AcademicNavy)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = AcademicNavy)
                     }
                 }
 
@@ -537,13 +536,13 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Physics, Chemistry, Higher Math, Biology & ICT notes ($1.01 for 1 note up to $20.01 for 20).",
+                                text = "Physics, Chemistry, Higher Math, Biology & ICT notes ($0.99, $1.99, $2.99 up to $19.99 for 1–20 notes).",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 16.sp
                             )
                         }
-                        Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = EmeraldTeal)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = EmeraldTeal)
                     }
                 }
 
@@ -592,7 +591,7 @@ fun HomeScreen(
                                 lineHeight = 16.sp
                             )
                         }
-                        Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color(0xFF01875F))
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF01875F))
                     }
                 }
             }

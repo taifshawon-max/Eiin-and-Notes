@@ -20,11 +20,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -98,14 +98,14 @@ fun ClassNotesScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = if (remainingNoteCredits > 0) Icons.Default.MenuBook else Icons.Default.Lock,
+                        imageVector = if (remainingNoteCredits > 0) Icons.AutoMirrored.Filled.MenuBook else Icons.Default.Lock,
                         contentDescription = null,
                         tint = if (remainingNoteCredits > 0) EmeraldTeal else Color.Red,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (remainingNoteCredits > 0) "$remainingNoteCredits Note Credits Available" else "0 Note Credits Left",
+                        text = if (remainingNoteCredits > 0) "$remainingNoteCredits Note Credits Available (1 Note = $0.99)" else "0 Note Credits Left",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (remainingNoteCredits > 0) EmeraldTeal else Color.Red
@@ -113,7 +113,7 @@ fun ClassNotesScreen(
                 }
 
                 Text(
-                    text = "Get Notes Pack",
+                    text = "Get Notes Pack ($0.99+)",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmeraldTeal,
@@ -339,7 +339,7 @@ fun ClassNotesScreen(
                                         .weight(1f)
                                         .testTag("read_note_${note.id}")
                                 ) {
-                                    Icon(imageVector = Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("Read Full Note", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }

@@ -14,17 +14,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
@@ -32,8 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,9 +69,12 @@ fun NoteViewerDialog(
     remainingNoteCredits: Int,
     onClose: () -> Unit,
     onUnlock: () -> Unit,
+    onDownloadPdf: () -> Unit,
+    onShareNote: () -> Unit,
     onOpenBilling: () -> Unit
 ) {
     var fontSizeMultiplier by remember { mutableFloatStateOf(1f) }
+    val canAccessFullNote = isUnlocked || remainingNoteCredits > 0
 
     Dialog(
         onDismissRequest = onClose,
@@ -87,7 +88,7 @@ fun NoteViewerDialog(
                             Text(
                                 text = note.title,
                                 maxLines = 1,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -99,11 +100,23 @@ fun NoteViewerDialog(
                     },
                     navigationIcon = {
                         IconButton(onClick = onClose, modifier = Modifier.testTag("close_note_reader_btn")) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
                     actions = {
-                        if (isUnlocked) {
+                        if (canAccessFullNote) {
+                            IconButton(
+                                onClick = onDownloadPdf,
+                                modifier = Modifier.testTag("download_note_pdf_top_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.Download, contentDescription = "Download PDF", tint = GoldenAmber)
+                            }
+                            IconButton(
+                                onClick = onShareNote,
+                                modifier = Modifier.testTag("share_note_top_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.Share, contentDescription = "Share Note", tint = Color.White)
+                            }
                             IconButton(onClick = {
                                 if (fontSizeMultiplier < 1.4f) fontSizeMultiplier += 0.15f
                             }) {
@@ -135,7 +148,7 @@ fun NoteViewerDialog(
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isUnlocked) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                        containerColor = if (canAccessFullNote) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -146,22 +159,22 @@ fun NoteViewerDialog(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isUnlocked) Icons.Default.CheckCircle else Icons.Default.Lock,
+                                imageVector = if (canAccessFullNote) Icons.Default.CheckCircle else Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (isUnlocked) EmeraldTeal else GoldenAmber,
+                                tint = if (canAccessFullNote) EmeraldTeal else GoldenAmber,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isUnlocked) "FULL NOTE UNLOCKED (PERMANENT ACCESS)" else "FREE SAMPLE PREVIEW",
+                                text = if (canAccessFullNote) "FULL NOTE UNLOCKED (PERMANENT ACCESS)" else "FREE SAMPLE PREVIEW (0 CREDITS LEFT)",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isUnlocked) EmeraldTeal else GoldenAmber
+                                color = if (canAccessFullNote) EmeraldTeal else GoldenAmber
                             )
                         }
 
                         Text(
-                            text = "PDF SECURE",
+                            text = "PDF READY",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -212,11 +225,42 @@ fun NoteViewerDialog(
                     }
                 }
 
+                if (canAccessFullNote) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onDownloadPdf,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldTeal),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("download_note_pdf_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Save PDF to Device", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onShareNote,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("share_note_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (isUnlocked) {
+                if (canAccessFullNote) {
                     // Full Note Document View
                     Card(
                         shape = RoundedCornerShape(12.dp),
@@ -239,7 +283,7 @@ fun NoteViewerDialog(
                                     color = EmeraldTeal
                                 )
                                 Text(
-                                    text = "100% Encrypted & Authenticated",
+                                    text = "Verified Academic Document",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -295,7 +339,7 @@ fun NoteViewerDialog(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Unlock Card
+                    // Unlock Card when 0 credits left
                     Card(
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
@@ -312,7 +356,7 @@ fun NoteViewerDialog(
                                 color = AcademicNavy
                             )
                             Text(
-                                text = "Cost: 1 Note Credit (Permanent access once unlocked)",
+                                text = "Your Note Credit limit has been reached (0 credits left). Purchase a Notes Pack to unlock and download PDF.",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp)
@@ -320,32 +364,13 @@ fun NoteViewerDialog(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            if (remainingNoteCredits > 0) {
-                                Button(
-                                    onClick = onUnlock,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
-                                    modifier = Modifier.fillMaxWidth().testTag("unlock_note_button")
-                                ) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Unlock Full Note (1 Credit)", fontWeight = FontWeight.Bold)
-                                }
-                                Text(
-                                    text = "$remainingNoteCredits note credits available in your wallet",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 6.dp)
-                                )
-                            } else {
-                                OutlinedButton(
-                                    onClick = onOpenBilling,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AcademicNavy),
-                                    modifier = Modifier.fillMaxWidth().testTag("purchase_notes_credits_btn")
-                                ) {
-                                    Text("No Note Credits Left — Buy Notes Pack", fontWeight = FontWeight.Bold)
-                                }
+                            Button(
+                                onClick = onOpenBilling,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
+                                modifier = Modifier.fillMaxWidth().testTag("purchase_notes_credits_btn")
+                            ) {
+                                Text("Buy Class Notes Pack via Google Play ($0.99+)", fontWeight = FontWeight.Bold)
                             }
                         }
                     }

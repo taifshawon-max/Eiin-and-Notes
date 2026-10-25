@@ -83,6 +83,7 @@ fun SchoolSearchScreen(
     googleSuggestions: List<String>,
     recentGoogleSearches: List<String>,
     activeGoogleWebQuery: String,
+    aiSearchSummary: String? = null,
     onGoogleWebViewResultsExtracted: (String, String) -> Unit,
     selectedDivision: String,
     onSelectDivision: (String) -> Unit,
@@ -148,7 +149,7 @@ fun SchoolSearchScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (remainingCredits > 0) "$remainingCredits School Credits • Live Google EIIN Search" else "0 Credits Remaining",
+                        text = if (remainingCredits > 0) "$remainingCredits School Credits • AI + Google EIIN Search" else "0 Credits Remaining",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (remainingCredits > 0) EmeraldTeal else Color.Red
@@ -175,7 +176,7 @@ fun SchoolSearchScreen(
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = "Google Live",
+                            text = "AI + Google Live",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = AcademicNavy
@@ -243,15 +244,15 @@ fun SchoolSearchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Public,
-                        contentDescription = "Search Google",
+                        contentDescription = "AI Search EIIN",
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Google", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("AI Search", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Live Google Search Progress Bar
+            // Live AI & Google Search Progress Bar
             if (isSearchingGoogle || isWebViewLoading) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
@@ -259,7 +260,7 @@ fun SchoolSearchScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Searching Google for '${searchQuery.ifBlank { effectiveWebQuery }}' EIIN...",
+                        text = "AI Searching & Extracting EIIN for '${searchQuery.ifBlank { effectiveWebQuery }}'...",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = AcademicNavy
@@ -584,9 +585,9 @@ fun SchoolSearchScreen(
                     ) {
                         Text(
                             text = if (searchQuery.isNotBlank()) {
-                                "${searchResults.size} Google & Web EIIN Results for '$searchQuery'"
+                                "${searchResults.size} AI & Web Extracted EIIN Results for '$searchQuery'"
                             } else {
-                                "${searchResults.size} Schools Available (Type above to search Google live)"
+                                "${searchResults.size} Schools Available (Type above for AI EIIN Search)"
                             },
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -601,6 +602,37 @@ fun SchoolSearchScreen(
                                 color = EmeraldTeal,
                                 modifier = Modifier.clickable { viewMode = "WEBVIEW" }
                             )
+                        }
+                    }
+
+                    if (!aiSearchSummary.isNullOrBlank() && searchQuery.isNotBlank()) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .testTag("ai_search_summary_card")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = null,
+                                    tint = EmeraldTeal,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = aiSearchSummary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AcademicNavy,
+                                    lineHeight = 15.sp
+                                )
+                            }
                         }
                     }
 
@@ -714,7 +746,7 @@ fun SchoolSearchScreen(
                                                         )
                                                         Spacer(modifier = Modifier.width(3.dp))
                                                         Text(
-                                                            text = "GOOGLE LIVE",
+                                                            text = "AI + GOOGLE EXTRACTED",
                                                             fontSize = 9.sp,
                                                             fontWeight = FontWeight.ExtraBold,
                                                             color = AcademicNavy

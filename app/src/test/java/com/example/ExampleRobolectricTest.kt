@@ -45,17 +45,30 @@ class ExampleRobolectricTest {
         val packages = PricingCatalog.notePackages
         assertEquals(20, packages.size)
 
-        // 1 note -> $1.01
+        // 1 note -> $0.99
         assertEquals(1, packages[0].noteCount)
-        assertEquals(1.01, packages[0].priceUsd, 0.001)
+        assertEquals(0.99, packages[0].priceUsd, 0.001)
+        assertEquals("$0.99", packages[0].formattedPrice)
 
-        // 10 notes -> $10.01
+        // 2 notes -> $1.99
+        assertEquals(2, packages[1].noteCount)
+        assertEquals(1.99, packages[1].priceUsd, 0.001)
+        assertEquals("$1.99", packages[1].formattedPrice)
+
+        // 3 notes -> $2.99
+        assertEquals(3, packages[2].noteCount)
+        assertEquals(2.99, packages[2].priceUsd, 0.001)
+        assertEquals("$2.99", packages[2].formattedPrice)
+
+        // 10 notes -> $9.99
         assertEquals(10, packages[9].noteCount)
-        assertEquals(10.01, packages[9].priceUsd, 0.001)
+        assertEquals(9.99, packages[9].priceUsd, 0.001)
+        assertEquals("$9.99", packages[9].formattedPrice)
 
-        // 20 notes -> $20.01
+        // 20 notes -> $19.99
         assertEquals(20, packages[19].noteCount)
-        assertEquals(20.01, packages[19].priceUsd, 0.001)
+        assertEquals(19.99, packages[19].priceUsd, 0.001)
+        assertEquals("$19.99", packages[19].formattedPrice)
     }
 
     @Test

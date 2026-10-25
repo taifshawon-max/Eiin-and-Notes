@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
@@ -85,7 +85,7 @@ fun MarketplaceBillingScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = activeColor,
             indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
+                TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
                     color = activeColor,
                     height = 3.dp
@@ -109,7 +109,7 @@ fun MarketplaceBillingScreen(
                 onClick = { onTabSelected("NOTES") },
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Class Notes", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
@@ -178,7 +178,7 @@ fun MarketplaceBillingScreen(
                 Text(
                     text = when (tabIndex) {
                         0 -> "1 credit = unlock 1 unique school's EIIN & dossier. Formula: Units × $1.00 + $0.01 (100 to 2,000 schools)."
-                        1 -> "1 note credit = unlock 1 full academic PDF note permanently. Formula: Notes × $1.00 + $0.01 (1 to 20 notes)."
+                        1 -> "1 note credit = unlock 1 full academic PDF note permanently. Pricing starts from $0.99, $1.99, $2.99 up to $19.99 (1 to 20 notes)."
                         else -> "1 Q&A credit = ask 1 question or unlock 1 verified solution. Formula: Questions × $1.00 + $0.01 (1 question = $1.01 up to 20 questions = $20.01)."
                     },
                     fontSize = 11.sp,

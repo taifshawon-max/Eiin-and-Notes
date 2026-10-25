@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.billing.GooglePlayBillingHelper
@@ -25,6 +26,9 @@ import com.example.data.repository.NotesRepository
 import com.example.data.repository.PurchaseResult
 import com.example.data.repository.QaRepository
 import com.example.data.repository.SchoolRepository
+import com.example.util.PdfExportUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +40,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class AppScreen(val label: String) {
     HOME("Home"),
@@ -47,6 +52,7 @@ enum class AppScreen(val label: String) {
     ADMIN("Admin Console")
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
@@ -63,8 +69,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         },
         onBillingStatusMessage = { msg ->
             _toastMessage.value = msg
+        },
+        onBillingDiagnosticRequired = { _ ->
+            _isPlayBillingModalOpen.value = true
         }
     )
+
+    val isPlayStoreConnected: StateFlow<Boolean> = playBillingHelper.isPlayStoreConnected
+    val billingDiagnosticMessage: StateFlow<String?> = playBillingHelper.lastBillingDiagnostic
+    val aiSearchSummary: StateFlow<String?> = schoolRepository.lastAiSearchSummary
 
     // Navigation stack for back button support
     private val _screenStack = MutableStateFlow(listOf(AppScreen.HOME))
@@ -416,7 +429,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSelectNote(note: ClassNoteEntity?) {
         _selectedNote.value = note
-        _isViewingFullNote.value = false
+        if (note != null) {
+            viewModelScope.launch {
+                val isAlreadyUnlocked = unlockedNoteIds.value.contains(note.id)
+                if (!isAlreadyUnlocked && entitlements.value.noteCreditsRemaining > 0) {
+                    notesRepository.unlockNote(note.id)
+                    _isViewingFullNote.value = true
+                } else {
+                    _isViewingFullNote.value = isAlreadyUnlocked
+                }
+            }
+        } else {
+            _isViewingFullNote.value = false
+        }
     }
 
     fun onUnlockNote(note: ClassNoteEntity) {
@@ -426,9 +451,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _toastMessage.value = "Note '${note.title}' unlocked! You have full access."
                 _isViewingFullNote.value = true
             }.onFailure { err ->
-                _toastMessage.value = err.message ?: "Failed to unlock note"
+                _toastMessage.value = err.message ?: "Note credit limit reached. Please buy a Class Notes package."
                 _billingTab.value = "NOTES"
                 navigateTo(AppScreen.BILLING)
+            }
+        }
+    }
+
+    fun exportNoteToPdf(note: ClassNoteEntity) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                PdfExportUtil.exportDocumentToDownloadsPdf(
+                    context = getApplication(),
+                    fileNamePrefix = "ClassNote_${note.courseCode}_${note.title.take(25)}",
+                    title = note.title,
+                    subtitle = "${note.subject} • ${note.academicLevel} • Author: ${note.author}",
+                    bodyContent = note.fullContent
+                )
+            }
+            result.onSuccess { savedName ->
+                _toastMessage.value = "PDF saved to Downloads/$savedName"
+            }.onFailure { err ->
+                _toastMessage.value = "PDF Export failed: ${err.message}"
             }
         }
     }
@@ -453,6 +497,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSelectQa(qa: QuestionAnswerEntity?) {
         _selectedQa.value = qa
+        if (qa != null) {
+            viewModelScope.launch {
+                val isAlreadyUnlocked = unlockedQaIds.value.contains(qa.id) || qa.isUserAsked
+                if (!isAlreadyUnlocked && entitlements.value.qaCreditsRemaining > 0) {
+                    qaRepository.unlockQa(qa.id)
+                }
+            }
+        }
     }
 
     fun onUnlockQa(qa: QuestionAnswerEntity) {
@@ -462,10 +514,44 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _toastMessage.value = "Answer for '${qa.questionTitle.take(35)}...' unlocked!"
                 _selectedQa.value = qa
             }.onFailure { err ->
-                _toastMessage.value = err.message ?: "Failed to unlock answer"
+                _toastMessage.value = err.message ?: "Q&A credit limit reached. Please buy a Q&A Pack."
                 _billingTab.value = "QA"
                 navigateTo(AppScreen.BILLING)
             }
+        }
+    }
+
+    fun exportQaToPdf(qa: QuestionAnswerEntity) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                PdfExportUtil.exportDocumentToDownloadsPdf(
+                    context = getApplication(),
+                    fileNamePrefix = "QA_Solution_${qa.category}_${qa.id}",
+                    title = qa.questionTitle,
+                    subtitle = "Q&A Solution • ${qa.category} (${qa.academicLevel}) • By ${qa.answeredBy}",
+                    bodyContent = "QUESTION DETAILS:\n${qa.questionDetails}\n\nVERIFIED SOLUTION:\n${qa.fullAnswer}"
+                )
+            }
+            result.onSuccess { savedName ->
+                _toastMessage.value = "Q&A PDF saved to Downloads/$savedName"
+            }.onFailure { err ->
+                _toastMessage.value = "PDF Export failed: ${err.message}"
+            }
+        }
+    }
+
+    fun shareDocumentContent(context: Context, subject: String, textBody: String) {
+        try {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_TEXT, textBody)
+            }
+            val chooser = Intent.createChooser(shareIntent, "Share via")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
+        } catch (e: Exception) {
+            _toastMessage.value = "Unable to open share sheet on this device."
         }
     }
 
@@ -501,27 +587,33 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _selectedSchoolPackage.value = pkg
         _selectedNotePackage.value = null
         _selectedQaPackage.value = null
-        if (!playBillingHelper.launchGooglePlayFlowIfConfigured(activity, pkg.sku)) {
-            _isPlayBillingModalOpen.value = true
-        }
+        playBillingHelper.launchGooglePlayBillingFlow(activity, pkg.sku)
     }
 
     fun initiateNotePurchase(pkg: NoteCreditPackage, activity: Activity? = null) {
         _selectedNotePackage.value = pkg
         _selectedSchoolPackage.value = null
         _selectedQaPackage.value = null
-        if (!playBillingHelper.launchGooglePlayFlowIfConfigured(activity, pkg.sku)) {
-            _isPlayBillingModalOpen.value = true
-        }
+        playBillingHelper.launchGooglePlayBillingFlow(activity, pkg.sku)
     }
 
     fun initiateQaPurchase(pkg: QaCreditPackage, activity: Activity? = null) {
         _selectedQaPackage.value = pkg
         _selectedSchoolPackage.value = null
         _selectedNotePackage.value = null
-        if (!playBillingHelper.launchGooglePlayFlowIfConfigured(activity, pkg.sku)) {
-            _isPlayBillingModalOpen.value = true
-        }
+        playBillingHelper.launchGooglePlayBillingFlow(activity, pkg.sku)
+    }
+
+    fun retryGooglePlayBilling(activity: Activity?) {
+        val sku = _selectedSchoolPackage.value?.sku
+            ?: _selectedNotePackage.value?.sku
+            ?: _selectedQaPackage.value?.sku
+            ?: return
+        playBillingHelper.launchGooglePlayBillingFlow(activity, sku)
+    }
+
+    fun openGooglePlayStoreListing() {
+        playBillingHelper.openGooglePlayStoreListing()
     }
 
     fun dismissBillingModal() {
@@ -554,63 +646,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 explicitPurchaseToken = purchaseToken
             )
             if (result is PurchaseResult.Success) {
+                dismissBillingModal()
                 _toastMessage.value = "Google Play Purchase Verified! $qty credits granted."
-            }
-        }
-    }
-
-    fun completePurchaseWithOutcome(simulatedOutcome: String) {
-        viewModelScope.launch {
-            val schoolPkg = _selectedSchoolPackage.value
-            val notePkg = _selectedNotePackage.value
-            val qaPkg = _selectedQaPackage.value
-
-            val (productType, sku, qty, price) = when {
-                schoolPkg != null -> Quad(
-                    "SCHOOL_CREDITS",
-                    schoolPkg.sku,
-                    schoolPkg.schoolRecords,
-                    schoolPkg.priceUsd
-                )
-                notePkg != null -> Quad(
-                    "NOTE_CREDITS",
-                    notePkg.sku,
-                    notePkg.noteCount,
-                    notePkg.priceUsd
-                )
-                qaPkg != null -> Quad(
-                    "QA_CREDITS",
-                    qaPkg.sku,
-                    qaPkg.questionCount,
-                    qaPkg.priceUsd
-                )
-                else -> return@launch
-            }
-
-            val result = billingRepository.processPurchase(
-                productType = productType,
-                sku = sku,
-                quantity = qty,
-                priceUsd = price,
-                simulatedOutcome = simulatedOutcome
-            )
-
-            when (result) {
-                is PurchaseResult.Success -> {
-                    _toastMessage.value = "Google Play Billing Success! $qty credits added to your account."
-                    dismissBillingModal()
-                }
-                is PurchaseResult.Pending -> {
-                    _toastMessage.value = "Google Play Order Pending: Awaiting Play Store confirmation."
-                    dismissBillingModal()
-                }
-                is PurchaseResult.UserCancelled -> {
-                    _toastMessage.value = "Google Play payment cancelled."
-                    dismissBillingModal()
-                }
-                is PurchaseResult.Error -> {
-                    _toastMessage.value = result.errorMessage
-                }
             }
         }
     }
@@ -618,8 +655,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun restorePurchases() {
         viewModelScope.launch {
             playBillingHelper.restoreGooglePlayPurchases()
-            billingRepository.restorePurchases()
-            _toastMessage.value = "Purchases and entitlements synchronized with Google Play Store!"
         }
     }
 
@@ -659,5 +694,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+    fun requestAccountDeletion() {
+        viewModelScope.launch {
+            entitlementRepository.resetAllForTesting()
+            _toastMessage.value = "Account data & local ledger cleared per Google Play User Data Policy."
+        }
+    }
 }

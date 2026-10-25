@@ -50,10 +50,11 @@ object PricingCatalog {
 
     /**
      * Class Notes Packages: 1 to 20 notes in increments of 1
-     * Formula: Price in USD = Number of notes × $1.00 + $0.01
+     * Formula: Price in USD = Number of notes × $1.00 - $0.01
+     * Starts from $0.99 (1 note), $1.99 (2 notes), $2.99 (3 notes) ... up to $19.99 (20 notes)
      */
     val notePackages: List<NoteCreditPackage> = (1..20).map { count ->
-        val price = (count * 1.00) + 0.01
+        val price = ((count * 100) - 1) / 100.0
         NoteCreditPackage(
             noteCount = count,
             priceUsd = price,

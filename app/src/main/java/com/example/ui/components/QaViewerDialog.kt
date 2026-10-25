@@ -17,18 +17,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,9 +63,11 @@ fun QaViewerDialog(
     remainingQaCredits: Int,
     onClose: () -> Unit,
     onUnlock: () -> Unit,
+    onDownloadPdf: () -> Unit,
+    onShareQa: () -> Unit,
     onOpenBilling: () -> Unit
 ) {
-    val hasFullAccess = isUnlocked || qa.isUserAsked
+    val hasFullAccess = isUnlocked || qa.isUserAsked || remainingQaCredits > 0
 
     Dialog(
         onDismissRequest = onClose,
@@ -89,7 +93,23 @@ fun QaViewerDialog(
                     },
                     navigationIcon = {
                         IconButton(onClick = onClose, modifier = Modifier.testTag("close_qa_viewer_btn")) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        if (hasFullAccess) {
+                            IconButton(
+                                onClick = onDownloadPdf,
+                                modifier = Modifier.testTag("download_qa_pdf_top_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.Download, contentDescription = "Download PDF", tint = GoldenAmber)
+                            }
+                            IconButton(
+                                onClick = onShareQa,
+                                modifier = Modifier.testTag("share_qa_top_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.Share, contentDescription = "Share Solution", tint = Color.White)
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -129,7 +149,7 @@ fun QaViewerDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (hasFullAccess) "VERIFIED SOLUTION UNLOCKED" else "ANSWER PREVIEW (LOCKED)",
+                                text = if (hasFullAccess) "VERIFIED SOLUTION UNLOCKED" else "ANSWER PREVIEW (0 CREDITS LEFT)",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (hasFullAccess) EmeraldTeal else GoldenAmber
@@ -208,6 +228,37 @@ fun QaViewerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (hasFullAccess) {
+                    // Action buttons for PDF Download & Share
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onDownloadPdf,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF01875F)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("download_qa_pdf_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Save Solution PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onShareQa,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("share_qa_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Full Solution View
                     Card(
                         shape = RoundedCornerShape(14.dp),
@@ -240,7 +291,7 @@ fun QaViewerDialog(
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
-                            Divider()
+                            HorizontalDivider()
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(
@@ -269,7 +320,7 @@ fun QaViewerDialog(
                         }
                     }
                 } else {
-                    // Preview Excerpt + Unlock CTA
+                    // Preview Excerpt + Buy Pack CTA
                     Text(
                         text = "Answer Summary Preview",
                         style = MaterialTheme.typography.titleSmall,
@@ -308,7 +359,7 @@ fun QaViewerDialog(
                                 color = AcademicNavy
                             )
                             Text(
-                                text = "Requires 1 Q&A Credit • Permanent access once unlocked",
+                                text = "Your Q&A Credit limit has been reached (0 credits left). Purchase a Q&A Pack via Google Play to continue.",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp)
@@ -316,32 +367,13 @@ fun QaViewerDialog(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            if (remainingQaCredits > 0) {
-                                Button(
-                                    onClick = onUnlock,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
-                                    modifier = Modifier.fillMaxWidth().testTag("unlock_qa_solution_btn")
-                                ) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Unlock Full Answer (1 Q&A Credit)", fontWeight = FontWeight.Bold)
-                                }
-                                Text(
-                                    text = "$remainingQaCredits Q&A credits available in your balance",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 6.dp)
-                                )
-                            } else {
-                                OutlinedButton(
-                                    onClick = onOpenBilling,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AcademicNavy),
-                                    modifier = Modifier.fillMaxWidth().testTag("buy_qa_pack_from_dialog_btn")
-                                ) {
-                                    Text("No Q&A Credits Left — Buy Q&A Pack ($1.01+)", fontWeight = FontWeight.Bold)
-                                }
+                            Button(
+                                onClick = onOpenBilling,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AcademicNavy),
+                                modifier = Modifier.fillMaxWidth().testTag("buy_qa_pack_from_dialog_btn")
+                            ) {
+                                Text("Buy Q&A Pack via Google Play ($1.01+)", fontWeight = FontWeight.Bold)
                             }
                         }
                     }

@@ -27,7 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -75,7 +75,8 @@ fun ProfileScreen(
     onSelectNote: (ClassNoteEntity) -> Unit,
     onSelectQa: (QuestionAnswerEntity) -> Unit,
     onRestorePurchases: () -> Unit,
-    onNavigateToAdmin: () -> Unit
+    onNavigateToAdmin: () -> Unit,
+    onRequestAccountDeletion: () -> Unit = {}
 ) {
     var selectedProfileTab by remember { mutableIntStateOf(0) }
     var showHelpDialog by remember { mutableStateOf(false) }
@@ -150,7 +151,7 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
+                    HorizontalDivider()
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Credit summary row
@@ -538,7 +539,7 @@ fun ProfileScreen(
             title = { Text("Help & Support", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "School EIIN Finder allows you to look up Educational Institute Identification Numbers issued by the Ministry of Education & BANBEIS, download Class Notes, and ask questions via Q&A Packs ($1.01 for 1 question up to $20.01 for 20 questions). All payments are processed exclusively through Google Play Billing."
+                    "School EIIN Finder allows you to look up Educational Institute Identification Numbers issued by the Ministry of Education & BANBEIS, download Class Notes ($0.99, $1.99, $2.99 up to $19.99 for 1–20 notes), and ask questions via Q&A Packs ($1.01 for 1 question up to $20.01 for 20 questions). All payments are processed exclusively through Google Play Billing."
                 )
             },
             confirmButton = {
@@ -589,7 +590,10 @@ fun ProfileScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { showDeleteAccountDialog = false },
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        onRequestAccountDeletion()
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
                     Text("Confirm Deletion Request")

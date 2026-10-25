@@ -13,20 +13,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,21 +48,30 @@ import com.example.data.model.SchoolCreditPackage
 import com.example.ui.theme.AcademicNavy
 import com.example.ui.theme.EmeraldTeal
 
+/**
+ * Official Google Play Billing Checkout & Diagnostic Sheet.
+ * Never adds credits automatically. Launches the native Google Play Store Billing flow
+ * (`BillingClient.launchBillingFlow`) and displays real-time Google Play Console SKU status.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayBillingSimulatorSheet(
     schoolPackage: SchoolCreditPackage?,
     notePackage: NoteCreditPackage?,
     qaPackage: QaCreditPackage? = null,
+    isPlayStoreConnected: Boolean = false,
+    diagnosticMessage: String? = null,
     onDismiss: () -> Unit,
-    onCompletePurchase: (outcome: String) -> Unit,
+    onRetryGooglePlayLaunch: () -> Unit = {},
+    onOpenPlayStore: () -> Unit = {},
+    onRestorePurchases: () -> Unit = {},
     sheetState: SheetState
 ) {
     val productName = when {
         schoolPackage != null -> "${schoolPackage.schoolRecords} School Search Credits"
         notePackage != null -> "${notePackage.noteCount} Class Notes Package"
         qaPackage != null -> "${qaPackage.questionCount} Question & Answer (Q&A) Pack"
-        else -> "Google Play Digital Entitlement"
+        else -> "Google Play In-App Product"
     }
 
     val priceFormatted = when {
@@ -101,8 +109,8 @@ fun PlayBillingSimulatorSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF01875F)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -116,58 +124,29 @@ fun PlayBillingSimulatorSheet(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Google Play Billing",
+                            text = "Google Play Store Billing",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Official Google Play In-App Purchase Only",
+                            text = if (isPlayStoreConnected) {
+                                "Google Play Billing Client v7 • Connected"
+                            } else {
+                                "Google Play Billing Client v7 • Connecting"
+                            },
                             fontSize = 11.sp,
-                            color = Color(0xFF01875F),
+                            color = if (isPlayStoreConnected) Color(0xFF01875F) else AcademicNavy,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 IconButton(
-                    onClick = { onCompletePurchase("CANCELLED") },
+                    onClick = onDismiss,
                     modifier = Modifier.testTag("cancel_billing_btn")
                 ) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // User Google Play Account Info
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "User Account",
-                    tint = AcademicNavy,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = "taifshawon@gmail.com",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Google Play Store Account • In-App Billing v7",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
@@ -207,7 +186,7 @@ fun PlayBillingSimulatorSheet(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
@@ -225,24 +204,56 @@ fun PlayBillingSimulatorSheet(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "Google Play Balance (In-App Billing)",
+                                    text = "Real Google Play Payment Required",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "No external payment methods allowed",
+                                    text = "Credits are only granted after Google Play Store payment confirmation",
                                     fontSize = 10.sp,
                                     color = Color(0xFF01875F),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Diagnostic / Status Box from Google Play BillingClient
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = AcademicNavy,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
                         Text(
-                            text = "USD",
+                            text = "Google Play Store Billing Status",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = AcademicNavy
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = diagnosticMessage
+                                ?: "Tap below to open the official Google Play Store payment sheet for Product ID '$sku' ($priceFormatted). No credits are added until Google Play verifies your purchase.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -263,76 +274,58 @@ fun PlayBillingSimulatorSheet(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Processed exclusively via Google Play Billing Library. Token verified idempotently.",
+                    text = "Strict Google Play Billing enforcement: Automatic/simulated credit addition is disabled.",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Primary 1-Tap Buy Button (Success)
+            // Primary Action: Launch Native Google Play Payment Sheet
             Button(
-                onClick = { onCompletePurchase("SUCCESS") },
+                onClick = onRetryGooglePlayLaunch,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF01875F)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
-                    .testTag("confirm_1_tap_buy_button")
+                    .testTag("launch_google_play_sheet_button")
             ) {
-                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Google Play 1-Tap Buy • $priceFormatted",
-                    fontSize = 15.sp,
+                    text = "Open Google Play Payment • $priceFormatted",
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Testing Simulation Scenarios
-            Text(
-                text = "GOOGLE PLAY TEST RESPONSES (EMULATOR SANDBOX)",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
-                    onClick = { onCompletePurchase("PENDING") },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).testTag("simulate_pending_btn")
+                    onClick = onRestorePurchases,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).testTag("sync_play_purchases_btn")
                 ) {
-                    Icon(imageVector = Icons.Default.HourglassTop, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Pending", fontSize = 11.sp)
+                    Text("Sync Play Purchases", fontSize = 11.sp)
                 }
 
                 OutlinedButton(
-                    onClick = { onCompletePurchase("ERROR") },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).testTag("simulate_error_btn")
+                    onClick = onOpenPlayStore,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).testTag("open_play_store_app_btn")
                 ) {
-                    Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Decline", fontSize = 11.sp, color = Color.Red)
-                }
-
-                OutlinedButton(
-                    onClick = { onCompletePurchase("CANCELLED") },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).testTag("simulate_cancel_btn")
-                ) {
-                    Text("Cancel", fontSize = 11.sp)
+                    Text("Play Store App", fontSize = 11.sp)
                 }
             }
         }
